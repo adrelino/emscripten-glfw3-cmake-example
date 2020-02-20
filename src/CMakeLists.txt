@@ -1,28 +1,35 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.0.0)
 
-PROJECT(emscripten-glfw3-cmake-example VERSION 0.1.0)
+project(emscripten-glfw3-cmake-example VERSION 0.1.0)
 
 set(CMAKE_CXX_STANDARD 11)
 
-if (NOT EMSCRIPTEN)
-    find_package(glfw3 REQUIRED)
-    message("glfw found with version " ${glfw3_VERSION})
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
 endif()
+message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
-FILE(GLOB SRC
-    *.cpp
-    *.h) 
+option(USE_LEGACY_OPENGL "Use Legacy OpenGL (fixed function pipeline) or Modern OpenGL (with shaders)" OFF)
+if(USE_LEGACY_OPENGL)
+    add_definitions(-DUSE_LEGACY_OPENGL)
+endif()
+message("USE_LEGACY_OPENGL: ${USE_LEGACY_OPENGL}")
 
-ADD_EXECUTABLE(${PROJECT_NAME} ${SRC} GL/src/glad.c)
-TARGET_INCLUDE_DIRECTORIES(${PROJECT_NAME} PUBLIC GL/include)
+add_executable(${PROJECT_NAME} main.cpp GL/src/glad.c)
 
 if(EMSCRIPTEN)
-set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".html")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -o index.html")
-set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-s USE_GLFW=3")
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} glfw)
+    set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".html")
+    set(LFLAGS "-s USE_GLFW=3")
+    if(USE_LEGACY_OPENGL)
+        set(LFLAGS "${LFLAGS} -s LEGACY_GL_EMULATION=1")
+    endif()
+    set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "${LFLAGS}")
 else()
-target_link_libraries(${PROJECT_NAME} glfw dl)
+    find_package(glfw3 REQUIRED)
+    message("glfw found with version " ${glfw3_VERSION})
+    target_link_libraries(${PROJECT_NAME} dl)
 endif()
-
+message("EMSCRIPTEN: ${EMSCRIPTEN}")
+target_include_directories(${PROJECT_NAME} PRIVATE GL/include)
+target_link_libraries(${PROJECT_NAME} glfw)
 
